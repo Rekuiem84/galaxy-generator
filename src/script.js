@@ -6,8 +6,9 @@ import GUI from "lil-gui";
  * Base
  */
 // Debug
-// const gui = new GUI();
-
+const gui = new GUI({
+	width: 400,
+});
 // Canvas
 const canvas = document.querySelector("canvas.webgl");
 
@@ -15,71 +16,172 @@ const canvas = document.querySelector("canvas.webgl");
 const scene = new THREE.Scene();
 
 /**
- * Lights
+ * Galaxy
  */
-// const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-// scene.add(ambientLight);
+// Parameters object
+const parameters = {};
+parameters.particlesCount = 250000; // Nombre de particules
+parameters.size = 0.01; // Taille des particules
+parameters.radius = 6; // Rayon de la galaxie
+parameters.branchesCount = 3; // Nombre de bras de la galaxie
+parameters.spin = 1.245; // "Quantité de spirale"
+parameters.randomness = 0.25; // Diamêtre des bras
+parameters.clusterCoefficient = 2; // Coefficient de regroupement au centre des bras
+parameters.innerColor = "#f4541f"; // Couleur du centre de la galaxie
+parameters.outerColor = "#1d4b96"; // Couleur de l'extérieur de la galaxie
 
-// const pointLight = new THREE.PointLight(0xffffff, 50);
-// pointLight.position.x = 2;
-// pointLight.position.y = 3;
-// pointLight.position.z = 4;
-// scene.add(pointLight);
+let geometry = null;
+let material = null;
+let particles = null;
 
-/**
- * Textures
- */
-const textureLoader = new THREE.TextureLoader();
-const particlesTexture = textureLoader.load("./textures/particles/3.png");
+function generateGalaxy() {
+	if (particles) {
+		geometry.dispose();
+		material.dispose();
+		scene.remove(particles);
+	}
 
-/**
- * Particles
- */
-// On créé une buffer geometry vide pour les particules
-// On définit le nombre de particules
-const particlesGeometry = new THREE.BufferGeometry();
-const count = 5000;
+	geometry = new THREE.BufferGeometry();
 
-// On crée un tableau de positions pour les particules, avec le x, y et z de chacune
-// On remplit le tableau avec des valeurs aléatoires pour chaque particule
-// On créé un tableau de couleurs
-const position = new Float32Array(count * 3);
-const colors = new Float32Array(count * 3);
+	const positions = new Float32Array(parameters.particlesCount * 3);
+	const colors = new Float32Array(parameters.particlesCount * 3);
 
-for (let i = 0; i < count * 3; i++) {
-	position[i] = (Math.random() - 0.5) * 10;
-	colors[i] = Math.random();
+	const innerColor = new THREE.Color(parameters.innerColor);
+	const outerColor = new THREE.Color(parameters.outerColor);
+
+	for (let i = 0; i < parameters.particlesCount; i++) {
+		// Position
+		const i3 = i * 3;
+
+		const radius = Math.random() * parameters.radius;
+		const spinAngle = radius * parameters.spin;
+		const branchAngle =
+			((i % parameters.branchesCount) / parameters.branchesCount) * Math.PI * 2;
+
+		const randomX =
+			Math.pow(Math.random(), parameters.clusterCoefficient) *
+			(Math.random() < 0.5 ? 1 : -1) *
+			parameters.randomness *
+			radius;
+		const randomY =
+			Math.pow(Math.random(), parameters.clusterCoefficient) *
+			(Math.random() < 0.5 ? 1 : -1) *
+			parameters.randomness *
+			radius;
+		const randomZ =
+			Math.pow(Math.random(), parameters.clusterCoefficient) *
+			(Math.random() < 0.5 ? 1 : -1) *
+			parameters.randomness *
+			radius;
+
+		positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+		positions[i3 + 1] = randomY;
+		positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+		//Color
+		const mixedColor = innerColor.clone();
+		mixedColor.lerp(outerColor, radius / parameters.radius);
+
+		colors[i3 + 0] = mixedColor.r;
+		colors[i3 + 1] = mixedColor.g;
+		colors[i3 + 2] = mixedColor.b;
+	}
+
+	geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+	material = new THREE.PointsMaterial({
+		size: parameters.size,
+		sizeAttenuation: true,
+		depthWrite: true,
+		blending: THREE.AdditiveBlending,
+		vertexColors: true,
+	});
+
+	particles = new THREE.Points(geometry, material);
+	scene.add(particles);
 }
+generateGalaxy();
 
-// On attribue à chaque particule une position dans la géométrie
-// On précise que chaque position est un vecteur de 3 valeurs (x, y, z)
-particlesGeometry.setAttribute(
-	"position",
-	new THREE.BufferAttribute(position, 3)
+gui
+	.add(parameters, "particlesCount")
+	.min(2000)
+	.max(1000000)
+	.step(100)
+	.onFinishChange(generateGalaxy);
+gui
+	.add(parameters, "size")
+	.min(0.001)
+	.max(0.2)
+	.step(0.001)
+	.onFinishChange(generateGalaxy);
+gui
+	.add(parameters, "radius")
+	.min(0.01)
+	.max(20)
+	.step(0.01)
+	.onFinishChange(generateGalaxy);
+gui
+	.add(parameters, "branchesCount")
+	.min(2)
+	.max(12)
+	.step(1)
+	.onFinishChange(generateGalaxy);
+gui.add(parameters, "spin").min(-5).max(5).step(0.001).onChange(generateGalaxy);
+gui
+	.add(parameters, "randomness")
+	.min(0)
+	.max(2)
+	.step(0.001)
+	.onFinishChange(generateGalaxy);
+gui
+	.add(parameters, "clusterCoefficient")
+	.min(1)
+	.max(10)
+	.step(0.001)
+	.onFinishChange(generateGalaxy);
+gui.addColor(parameters, "innerColor").onFinishChange(generateGalaxy);
+gui.addColor(parameters, "outerColor").onFinishChange(generateGalaxy);
+
+// Black hole
+parameters.showBlackHole = false;
+parameters.blackHoleSize = 0.02;
+
+let blackHoleGeometry = new THREE.SphereGeometry(
+	parameters.blackHoleSize,
+	32,
+	32
 );
-// On ajoute un attribut de couleur à la géométrie
-// On précise que chaque couleur est un vecteur de 3 valeurs (r, g, b)
-particlesGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-// On crée un matériau pour les particules
-// On définit la taille de chaque particule et si elle doit être affectée par la distance
-const particlesMaterial = new THREE.PointsMaterial({
-	size: 0.1,
-	sizeAttenuation: true,
-	// color: "#a8fff8",
-	vertexColors: true, // Utilise les couleurs définies dans la géométrie
-	alphaMap: particlesTexture,
-	transparent: true,
-	// alphaTest: 0.6,
-	// depthTest: false,
-	depthWrite: false,
-	blending: THREE.AdditiveBlending,
+const blackHoleMaterial = new THREE.MeshBasicMaterial({
+	color: "#000000",
 });
+let blackHole = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
+blackHole.position.set(0, 0, 0);
+scene.add(blackHole);
 
-// Points
-// On crée un objet Points qui combine la géométrie et le matériau
-const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-scene.add(particles);
+// Toggle black hole visibility
+gui
+	.add(parameters, "showBlackHole")
+	.name("Show Black Hole")
+	.onChange((value) => {
+		blackHole.visible = value;
+	});
+
+// Contrôle de la taille du trou noir
+gui
+	.add(parameters, "blackHoleSize")
+	.min(0.01)
+	.max(0.4)
+	.step(0.01)
+	.name("Black Hole Size")
+	.onChange((value) => {
+		// Remplacer la géométrie du trou noir
+		blackHole.geometry.dispose();
+		blackHole.geometry = new THREE.SphereGeometry(value, 32, 32);
+	});
+
+// Set initial visibility
+blackHole.visible = parameters.showBlackHole;
 
 /**
  * Sizes
@@ -113,9 +215,9 @@ const camera = new THREE.PerspectiveCamera(
 	0.1,
 	100
 );
-camera.position.x = 1;
-camera.position.y = 1;
-camera.position.z = 2;
+camera.position.x = 2.5;
+camera.position.y = 2.5;
+camera.position.z = 2.5;
 scene.add(camera);
 
 // Controls
@@ -139,11 +241,11 @@ const clock = new THREE.Clock();
 const tick = () => {
 	const elapsedTime = clock.getElapsedTime();
 
+	particles.rotation.y = elapsedTime * 0.1;
+	// particles.rotation.x = Math.sin(elapsedTime) * 0.02;
+
 	// Update controls
 	controls.update();
-
-	// Update particles
-	particles.rotation.y = elapsedTime * 0.05;
 
 	// Render
 	renderer.render(scene, camera);

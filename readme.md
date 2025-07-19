@@ -1,4 +1,4 @@
-# 🌌 Three.js – Générateur de Galaxie
+# 🌌 Three.js – Générateur de Galaxie 🌀
 
 Une scène 3D interactive de galaxie créée avec [Three.js](https://threejs.org/), inspirée du parcours Three.js Journey par Bruno Simon.
 

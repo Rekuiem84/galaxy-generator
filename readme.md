@@ -66,6 +66,15 @@ Une scène 3D interactive de galaxie créée avec [Three.js](https://threejs.org
 - Couleur intérieure et extérieure
 - Visibilité et taille du trou noir central
 
+## 🧪 Modifications des shaders
+
+Ajout d'améliorations dans les shaders pour animer et avoir plus de contrôle sur l'apparence et le comportement des particules.
+
+Uniforms :
+
+- uTime : pour faire évoluer la position des particules en fonction du temps écoulé
+- uSize : pour avoir un contrôle sur la taille des particules
+
 ## 🔗 Mes autres projets Three.js
 
 - [Repo Three.js Journey principal](https://github.com/Rekuiem84/threejs-journey) — pour retrouver tous mes projets suivant ce parcours
